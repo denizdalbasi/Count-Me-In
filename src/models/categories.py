@@ -12,6 +12,3 @@ def upload_categories(file: str):
     response = supabase.table("categories").insert(categories_data).execute()
     
     print("Upload successful!", response)
-
-if __name__ == "__main__":
-    upload_categories()
