@@ -927,25 +927,8 @@ function DetailPage({
             <section className="detail-section">
               <h2>About this opportunity</h2>
               <p>
-                {item.description} No previous experience is needed—just bring comfortable clothes,
-                a water bottle, and a willingness to lend a hand.
+                {item.description}
               </p>
-              <p>We’ll provide all supplies and a friendly team lead will help you get started.</p>
-            </section>
-            <section className="detail-section">
-              <h2>What you’ll do</h2>
-              <ul className="check-list">
-                <li>
-                  <Icon name="check" size={17} /> Work alongside a welcoming team of local
-                  volunteers
-                </li>
-                <li>
-                  <Icon name="check" size={17} /> Help with light, hands-on tasks at your own pace
-                </li>
-                <li>
-                  <Icon name="check" size={17} /> Make a visible difference in just a few hours
-                </li>
-              </ul>
             </section>
           </article>
           <aside className="register-card">
