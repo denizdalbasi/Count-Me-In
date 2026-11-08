@@ -125,3 +125,50 @@ def login_user(payload: Dict[Any, Any] = Body(...)):
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+@app.post("/applications")
+def create_application(payload: Dict[Any, Any] = Body(...)):
+    try:
+        # Remove any accidental ID
+        payload.pop("id", None)
+
+        # Get profile-id and the opportunity name (checking a few possible key names)
+        profile_id = payload.get("profile-id") or payload.get("profile_id")
+        opportunity_name = payload.get("opportunity-name") or payload.get("opportunity_name") or payload.get("title")
+
+        if not profile_id or not opportunity_name:
+            raise HTTPException(status_code=400, detail="profile-id and opportunity-name (or title) are required")
+
+        # 1. Verify that the user profile exists
+        profile_check = supabase.table("profiles").select("*").eq("id", profile_id).execute()
+        if not profile_check.data:
+            raise HTTPException(status_code=404, detail="Profile not found")
+
+        # 2. Look up the opportunity by its title/name to find its real ID
+        opp_check = supabase.table("opportunities").select("*").eq("title", opportunity_name).execute()
+        if not opp_check.data:
+            raise HTTPException(status_code=404, detail=f"Opportunity '{opportunity_name}' not found")
+
+        # Extract the actual ID from the matching opportunity record
+        opportunity_record = opp_check.data[0]
+        opportunity_id = opportunity_record["id"]
+
+        # 3. Prepare the data row for your form-applications table
+        application_data = {
+            "profile-id": profile_id,
+            "opportunity-id": opportunity_id,
+            "message": payload.get("message", "")
+        }
+
+        # Insert application into Supabase
+        response = supabase.table("form-applications").insert(application_data).execute()
+        
+        return {
+            "message": "Application submitted successfully!",
+            "application": response.data[0]
+        }
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
