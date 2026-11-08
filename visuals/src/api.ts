@@ -46,6 +46,12 @@ function categoryFromId(id: number): Category {
   return CATEGORIES[id - 1] ?? "Others";
 }
 
+function validCategory(value: string): Opportunity["category"] {
+  return CATEGORIES.includes(value as Opportunity["category"])
+    ? (value as Opportunity["category"])
+    : "Others";
+}
+
 function convertOpportunity(item: SupabaseOpportunity, organizationName?: string): Opportunity {
   return {
     id: item.id,
@@ -53,7 +59,7 @@ function convertOpportunity(item: SupabaseOpportunity, organizationName?: string
     description: item.description,
     location: item["location-name"] ?? "Vancouver, BC",
     org: item.orgName ?? organizationName ?? "Organization unavailable",
-    category: item.categoryName ?? (item["category-id"] ? categoryFromId(item["category-id"]) : "Others"),
+    category: validCategory(item.categoryName ?? (item["category-id"] ? categoryFromId(item["category-id"]) : "Others")),
     date: item.created_at ? new Date(item.created_at).toLocaleDateString() : "Flexible",
     time: "Flexible hours",
     distance: item.distance ?? 0,
@@ -67,8 +73,13 @@ function convertOpportunity(item: SupabaseOpportunity, organizationName?: string
 
 export const api = {
   // Opportunities - matches FastAPI routes exactly
-  getOpportunities: async () => {
-    const data = await request<SupabaseOpportunity[]>("/opportunities");
+  getOpportunities: async (title: string = "") => {
+    const params = new URLSearchParams();
+    if (title.trim()) {
+      params.set("title", title.trim());
+    }
+    const url = `/opportunities${params.toString() ? `?${params.toString()}` : ""}`;
+    const data = await request<SupabaseOpportunity[]>(url);
     return data.map((item) => convertOpportunity(item));
   },
   

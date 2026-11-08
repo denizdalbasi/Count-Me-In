@@ -381,12 +381,12 @@ function Map({
     Number.isFinite(selectedOpportunity.longitude);
   const mapUrl = hasCoordinates
     ? openStreetMapProvider.getEmbedUrl(
-        {
-          latitude: selectedOpportunity.latitude,
-          longitude: selectedOpportunity.longitude,
-        },
-        zoom,
-      )
+      {
+        latitude: selectedOpportunity.latitude,
+        longitude: selectedOpportunity.longitude,
+      },
+      zoom,
+    )
     : null;
   return (
     <section
@@ -456,11 +456,15 @@ function BrowsePage({
   saved,
   toggleSaved,
   goDetail,
+  searchQuery,
+  setSearchQuery,
 }: {
   opportunities: Opportunity[];
   saved: number[];
   toggleSaved: (id: number) => void;
   goDetail: (id: number) => void;
+  searchQuery: string;
+  setSearchQuery: (value: string) => void;
 }) {
   const [distance, setDistance] = useState(8);
   const [time, setTime] = useState("Any time");
@@ -474,14 +478,14 @@ function BrowsePage({
     () =>
       userLocation
         ? opportunities.map((item) => ({
-            ...item,
-            distance: Number(
-              distanceInMiles(userLocation, {
-                latitude: item.latitude,
-                longitude: item.longitude,
-              }).toFixed(1),
-            ),
-          }))
+          ...item,
+          distance: Number(
+            distanceInMiles(userLocation, {
+              latitude: item.latitude,
+              longitude: item.longitude,
+            }).toFixed(1),
+          ),
+        }))
         : opportunities,
     [opportunities, userLocation],
   );
@@ -528,7 +532,9 @@ function BrowsePage({
               <Icon name="search" size={19} />
               <input
                 aria-label="Search opportunities"
-                placeholder="Search by cause, skill, or organization"
+                placeholder="Search volunteer opportunities by title"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
               />
             </span>
           </label>
@@ -909,8 +915,8 @@ function ProfilePage({ profile }: { profile: Profile | null }) {
   const isOrganization = profile?.role.toLowerCase() === "organisation";
   const memberSince = profile?.created_at
     ? new Intl.DateTimeFormat("en", { month: "long", year: "numeric" }).format(
-        new Date(profile.created_at),
-      )
+      new Date(profile.created_at),
+    )
     : "March 2024";
   return (
     <main className="shell profile-page">
@@ -1015,18 +1021,11 @@ function SavedPage({
 
 export default function App() {
   const [opportunities, setOpportunities] = useState<Opportunity[]>(mockOpportunities);
+  const [searchQuery, setSearchQuery] = useState("");
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [logged_in, setLoggedIn] = useState(false);
   const [currentProfile, setCurrentProfile] = useState<Profile | null>(null);
   useEffect(() => {
-    api
-      .getOpportunities()
-      .then((data) => {
-        setOpportunities(data);
-      })
-      .catch((error) => {
-        console.error("Failed to load opportunities:", error);
-      });
     api
       .getProfiles()
       .then((data) => {
@@ -1036,6 +1035,27 @@ export default function App() {
         console.error("Failed to load profiles:", error);
       });
   }, []);
+  useEffect(() => {
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      api
+        .getOpportunities(searchQuery)
+        .then((data) => {
+          if (!cancelled) {
+            setOpportunities(data);
+          }
+        })
+        .catch((error) => {
+          if (!cancelled) {
+            console.error("Failed to search opportunities:", error);
+          }
+        });
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [searchQuery]);
   const [page, setPage] = useState<Page>("browse");
   const [saved, setSaved] = useState<number[]>(() => {
     const stored = localStorage.getItem("savedOpportunities");
@@ -1079,6 +1099,8 @@ export default function App() {
           saved={saved}
           toggleSaved={toggleSaved}
           goDetail={goDetail}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
         />
       )}
       {page === "auth" && (
