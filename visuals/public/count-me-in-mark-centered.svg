@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Count Me In" focusable="false">
+  <rect width="64" height="64" rx="15" fill="#7fb06b"/>
+  <path
+    d="M20.8 5.8a5.4 5.4 0 0 0-7.6 0L12 7l-1.2-1.2a5.4 5.4 0 1 0-7.6 7.6L12 22l8.8-8.6a5.4 5.4 0 0 0 0-7.6Z"
+    fill="#1b2e14"
+    transform="translate(15.4 15.4) scale(1.383)"
+  />
+</svg>

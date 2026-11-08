@@ -1,9 +1,12 @@
 import os
 from typing import *
-from fastapi import *
-from dotenv import *
-from supabase import *
+from fastapi import FastAPI, HTTPException, Body
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
+from dotenv import load_dotenv
+from supabase import create_client, Client
 import traceback
+import folium
 
 load_dotenv()
 
@@ -14,9 +17,28 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 app = FastAPI()
 
+# 1. CRITICAL: Enable CORS so your React frontend can talk to this backend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins during development
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all HTTP methods (GET, POST, etc.)
+    allow_headers=["*"],  # Allows all headers
+)
+
+@app.get("/")
+def read_root():
+    return {
+        "message": "Welcome to the Count Me In API!",
+        "docs": "/docs",
+        "map": "/map",
+        "opportunities": "/opportunities"
+    }
+
 @app.get("/opportunities")
 def get_opportunities(
     title: Optional[str] = None, 
+    categoryId: Optional[str] = None,
     minAge: Optional[int] = None,
     maxAge: Optional[int] = None,
     location: Optional[str] = None,
@@ -27,17 +49,45 @@ def get_opportunities(
 
         if title:
             query = query.ilike("title", f"%{title}%")
+        if categoryId:
+            query = query.eq("category-id", categoryId)
         if minAge:
             query = query.gte("min_age", minAge)
         if maxAge:
             query = query.lte("max_age", maxAge)
         if location:
-            query = query.ilike("location", f"%{location}%")
+            query = query.ilike("location-name", f"%{location}%")
         if created_at:
             query = query.ilike("created_at", f"%{created_at}%")
 
         response = query.execute()
-        return response.data
+        opportunities_data = response.data
+
+        # 2. Fetch profiles and categories to map names and strip IDs for frontend
+        profiles_response = supabase.table("profiles").select("id, name").execute()
+        profiles_map = {p["id"]: p["name"] for p in profiles_response.data}
+
+        try:
+            categories_response = supabase.table("categories").select("id, name").execute()
+            categories_map = {c["id"]: c["name"] for c in categories_response.data}
+        except Exception:
+            categories_map = {}
+
+        for opp in opportunities_data:
+            org_id = opp.get("organization-id") or opp.get("organization_id")
+            cat_id = opp.get("category-id") or opp.get("category_id")
+
+            # Inject human-readable names for UI visuals
+            opp["orgName"] = profiles_map.get(org_id, "Unknown Organisation")
+            opp["categoryName"] = categories_map.get(cat_id, "General")
+
+            # Strip internal database IDs from the payload sent to React
+            opp.pop("organization-id", None)
+            opp.pop("organization_id", None)
+            opp.pop("category-id", None)
+            opp.pop("category_id", None)
+
+        return opportunities_data
 
     except Exception as e:
         traceback.print_exc()
@@ -48,6 +98,13 @@ def create_opportunity(payload: Dict[Any, Any] = Body(...)):
     try:
         payload.pop("id", None)
 
+        # Handle lookup if frontend passes orgName instead of organization-id
+        org_name = payload.pop("orgName", None) or payload.pop("org-name", None)
+        if org_name and not payload.get("organization-id"):
+            profile_match = supabase.table("profiles").select("id").eq("name", org_name).execute()
+            if profile_match.data:
+                payload["organization-id"] = profile_match.data[0]["id"]
+
         response = supabase.table("opportunities").insert(payload).execute()
         return {
             "message": "Opportunity created successfully!", 
@@ -57,7 +114,6 @@ def create_opportunity(payload: Dict[Any, Any] = Body(...)):
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
-
 
 @app.get("/profiles")
 def get_all_profiles(): 
@@ -73,7 +129,6 @@ def sign_up_user(payload: Dict[Any, Any] = Body(...)):
     try:
         payload.pop("id", None)
         
-        # Check by email since that's your unique identifier
         email = payload.get("email")
         if not email:
             raise HTTPException(status_code=400, detail="Email is required")
@@ -123,11 +178,6 @@ def login_user(payload: Dict[Any, Any] = Body(...)):
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
-
-
-
-import folium
-from fastapi.responses import HTMLResponse
 
 @app.get("/map", response_class=HTMLResponse)
 def generate_opportunities_map():

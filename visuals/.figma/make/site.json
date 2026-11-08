@@ -1,0 +1,13 @@
+{
+  "description": "Find and filter local volunteer opportunities, explore listings on a map, save favorites, register to help, and manage volunteer profiles.",
+  "icons": {
+    "icon": "/count-me-in-mark-centered.svg"
+  },
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
