@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import AddOpportunityPage from "./AddOpportunityPage";
 import { api } from "./api";
-import { distanceInMiles, openStreetMapProvider, type Coordinates } from "./map";
+import { distanceInMiles, type Coordinates } from "./map";
 import { CATEGORIES, type Opportunity, type Profile } from "./opportunity";
 
 type Page = "browse" | "auth" | "detail" | "profile" | "saved" | "add-opportunity";
@@ -373,35 +373,18 @@ function Map({
   selected: number | null;
   onSelect: (id: number) => void;
 }) {
-  const [zoom, setZoom] = useState(14);
   const selectedOpportunity = items.find((item) => item.id === selected);
-  const hasCoordinates =
-    selectedOpportunity &&
-    Number.isFinite(selectedOpportunity.latitude) &&
-    Number.isFinite(selectedOpportunity.longitude);
-  const mapUrl = hasCoordinates
-    ? openStreetMapProvider.getEmbedUrl(
-      {
-        latitude: selectedOpportunity.latitude,
-        longitude: selectedOpportunity.longitude,
-      },
-      zoom,
-    )
-    : null;
   return (
     <section
-      className={`map-panel ${mapUrl ? "has-live-map" : ""}`}
+      className="map-panel has-live-map"
       aria-label="Map showing opportunity locations"
     >
-      {mapUrl && (
-        <iframe
-          className="map__embed"
-          src={mapUrl}
-          title={`Map of ${selectedOpportunity?.title ?? "opportunity"}`}
-          loading="lazy"
-          referrerPolicy="no-referrer"
-        />
-      )}
+      <iframe
+        className="map__embed"
+        src="http://127.0.0.1:8000/map"
+        title="Map of volunteer opportunities"
+        loading="lazy"
+      />
       <div className="map__roads">
         <span className="road road--one" />
         <span className="road road--two" />
@@ -409,23 +392,6 @@ function Map({
         <span className="river" />
         <span className="park">Riverdale Park</span>
       </div>
-      <div className="radius-ring" />
-      <span className="you-dot">
-        <i /> You
-      </span>
-      {items.map((item) => {
-        const pinIndex = (items.findIndex((opportunity) => opportunity.id === item.id) % 4) + 1;
-        return (
-          <button
-            key={item.id}
-            aria-label={`${item.title}, ${item.distance} miles away`}
-            className={`map-pin pin-${pinIndex} ${selected === item.id ? "is-selected" : ""}`}
-            onClick={() => onSelect(item.id)}
-          >
-            <Icon name="heart" size={14} />
-          </button>
-        );
-      })}
       {selectedOpportunity && (
         <div className="map-card">
           <Tag category={selectedOpportunity.category} />
@@ -433,20 +399,6 @@ function Map({
           <span>{selectedOpportunity.distance} mi away</span>
         </div>
       )}
-      <div className="map-controls">
-        <button
-          aria-label="Zoom in"
-          onClick={() => setZoom((current) => Math.min(18, current + 1))}
-        >
-          +
-        </button>
-        <button
-          aria-label="Zoom out"
-          onClick={() => setZoom((current) => Math.max(10, current - 1))}
-        >
-          −
-        </button>
-      </div>
     </section>
   );
 }
