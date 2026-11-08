@@ -439,6 +439,8 @@ function BrowsePage({
   setSearchQuery,
   userAge,
   setUserAge,
+  time,
+  setTime,
 }: {
   opportunities: Opportunity[];
   saved: number[];
@@ -448,9 +450,10 @@ function BrowsePage({
   setSearchQuery: (value: string) => void;
   userAge: string;
   setUserAge: (value: string) => void;
+  time: string;
+  setTime: (value: string) => void;
 }) {
   const [distance, setDistance] = useState(8);
-  const [time, setTime] = useState("Any time");
   const [category, setCategory] = useState("All categories");
   const [selected, setSelected] = useState(1);
   const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
@@ -475,11 +478,7 @@ function BrowsePage({
   const visible = opportunitiesWithDistance.filter((item) => {
     const matchesDistance = item.distance <= distance;
     const matchesCategory = category === "All categories" || item.category === category;
-    const matchesTime =
-      time === "Any time" ||
-      time === "Last month" ||
-      (time === "Last week" && [1, 2].includes(item.id));
-    return matchesDistance && matchesCategory && matchesTime;
+    return matchesDistance && matchesCategory;
   });
   const useMyLocation = () => {
     if (!navigator.geolocation) {
@@ -1093,6 +1092,7 @@ export default function App() {
   const [opportunities, setOpportunities] = useState<Opportunity[]>(mockOpportunities);
   const [searchQuery, setSearchQuery] = useState("");
   const [userAge, setUserAge] = useState("");
+  const [time, setTime] = useState("Any time");
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [logged_in, setLoggedIn] = useState(false);
   const [currentProfile, setCurrentProfile] = useState<Profile | null>(null);
@@ -1110,7 +1110,7 @@ export default function App() {
     let cancelled = false;
     const timer = setTimeout(() => {
       api
-        .getOpportunities(searchQuery, userAge)
+        .getOpportunities(searchQuery, userAge, time)
         .then((data) => {
           if (!cancelled) {
             setOpportunities(data);
@@ -1126,7 +1126,7 @@ export default function App() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [searchQuery, userAge]);
+  }, [searchQuery, userAge, time]);
   const [page, setPage] = useState<Page>("browse");
   const [saved, setSaved] = useState<number[]>(() => {
     const stored = localStorage.getItem("savedOpportunities");
@@ -1190,6 +1190,8 @@ export default function App() {
           setSearchQuery={setSearchQuery}
           userAge={userAge}
           setUserAge={setUserAge}
+          time={time}
+          setTime={setTime}
         />
       )}
       {page === "signin" && <SignInPage go={go} onAuthenticated={handleAuthenticated} />}
