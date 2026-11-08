@@ -381,24 +381,29 @@ function Map({
   onSelect: (id: number) => void;
 }) {
   const selectedOpportunity = items.find((item) => item.id === selected);
+  const mapUrl =
+  items.length > 0
+    ? `http://127.0.0.1:8000/map?${items
+        .map((item) => `ids=${encodeURIComponent(item.id)}`)
+        .join("&")}`
+    : "";
+  console.log("Frontend opportunities:", items);
+  console.log("IDs being sent to map:", items.map((item) => item.id));
+  console.log("Map URL:", mapUrl);
   return (
     <section
       className="map-panel has-live-map"
       aria-label="Map showing opportunity locations"
     >
       <iframe
+       key = {mapUrl}
         className="map__embed"
-        src="http://127.0.0.1:8000/map"
+        src={mapUrl}
         title="Map of volunteer opportunities"
         loading="lazy"
       />
-      <div className="map__roads">
-        <span className="road road--one" />
-        <span className="road road--two" />
-        <span className="road road--three" />
-        <span className="river" />
-        <span className="park">Riverdale Park</span>
-      </div>
+      
+
       {selectedOpportunity && (
         <div className="map-card">
           <Tag category={selectedOpportunity.category} />
@@ -489,17 +494,6 @@ function BrowsePage({
       </section>
       <section className="filters">
         <div className="shell filters__inner">
-          <label className="filter-field age-filter">
-            <span>Your age</span>
-            <input
-              type="number"
-              min="1"
-              max="120"
-              placeholder="Enter age"
-              value={userAge}
-              onChange={(event) => setUserAge(event.target.value)}
-            />
-          </label>
           <label className="filter-field search-filter">
             <span>Search</span>
             <span className="search-field">
@@ -511,6 +505,17 @@ function BrowsePage({
                 onChange={(event) => setSearchQuery(event.target.value)}
               />
             </span>
+          </label>
+          <label className="filter-field age-filter">
+            <span>Your age</span>
+            <input
+              type="number"
+              min="1"
+              max="120"
+              placeholder="Age"
+              value={userAge}
+              onChange={(event) => setUserAge(event.target.value)}
+            />
           </label>
           <label className="select-field category-filter">
             <span>Category</span>

@@ -240,6 +240,25 @@
   background: transparent;
   font-size: 14px;
 }
+.search-field:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgb(127 176 107 / 13%);
+}
+.age-filter input {
+  width: 100%;
+  height: 42px;
+  padding: 0 16px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  outline: 0;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 14px;
+}
+.age-filter input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgb(127 176 107 / 13%);
+}
 .distance-filter {
   min-height: 59px;
   display: flex;
