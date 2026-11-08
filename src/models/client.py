@@ -5,9 +5,9 @@ from supabase import create_client, Client
 
 load_dotenv()
 
-class SupabaseClient:
-    def __init__(self):
-        self.url = os.getenv("SUPABASE_URL")
-        self.key = os.getenv("SUPABASE_KEY")
-        self.supabase: Client = create_client(self.url, self.key)
+
+
+    self.url = os.getenv("SUPABASE_URL")
+    self.key = os.getenv("SUPABASE_KEY")
+    self.supabase: Client = create_client(self.url, self.key)
     
