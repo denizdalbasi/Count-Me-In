@@ -489,17 +489,6 @@ function BrowsePage({
       </section>
       <section className="filters">
         <div className="shell filters__inner">
-          <label className="filter-field age-filter">
-            <span>Your age</span>
-            <input
-              type="number"
-              min="1"
-              max="120"
-              placeholder="Enter age"
-              value={userAge}
-              onChange={(event) => setUserAge(event.target.value)}
-            />
-          </label>
           <label className="filter-field search-filter">
             <span>Search</span>
             <span className="search-field">
@@ -511,6 +500,17 @@ function BrowsePage({
                 onChange={(event) => setSearchQuery(event.target.value)}
               />
             </span>
+          </label>
+          <label className="filter-field age-filter">
+            <span>Your age</span>
+            <input
+              type="number"
+              min="1"
+              max="120"
+              placeholder="Age"
+              value={userAge}
+              onChange={(event) => setUserAge(event.target.value)}
+            />
           </label>
           <label className="select-field category-filter">
             <span>Category</span>
