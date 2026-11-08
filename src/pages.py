@@ -62,9 +62,9 @@ def get_opportunities(
         if categoryId:
             query = query.eq("category-id", categoryId)
         if minAge is not None:
-            query = query.lte("min_age", minAge)
+            query = query.lte("min-age", minAge)
         if maxAge is not None:
-            query = query.gte("max_age", maxAge)
+            query = query.gte("max-age", maxAge)
         if location:
             query = query.ilike("location-name", f"%{location}%")
         if created_at:
