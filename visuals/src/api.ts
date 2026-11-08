@@ -118,14 +118,14 @@ export const api = {
 
   // Accounts - matches FastAPI /signup and /login routes
   signup: (body: { role: string; name: string; email: string; phone: string; password: string }) =>
-    request("/signup", { method: "POST", body: JSON.stringify(body) }),
+    request<{ message: string; user: Profile }>("/signup", { method: "POST", body: JSON.stringify(body) }),
     
   signin: (body: { email: string; password: string }) =>
-    request("/login", { method: "POST", body: JSON.stringify(body) }),
+    request<{ message: string; user: Profile }>("/login", { method: "POST", body: JSON.stringify(body) }),
 
   // Added `login` alias so both signin and login naming conventions work seamlessly
   login: (body: { email: string; password: string }) =>
-    request("/login", { method: "POST", body: JSON.stringify(body) }),
+    request<{ message: string; user: Profile }>("/login", { method: "POST", body: JSON.stringify(body) }),
     
   getProfile: async () => {
     const profiles = await request<Profile[]>("/profiles");

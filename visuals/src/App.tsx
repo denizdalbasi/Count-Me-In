@@ -4,7 +4,7 @@ import { api } from "./api";
 import { distanceInMiles, type Coordinates } from "./map";
 import { CATEGORIES, type Opportunity, type Profile } from "./opportunity";
 
-type Page = "browse" | "auth" | "detail" | "profile" | "saved" | "add-opportunity";
+type Page = "browse" | "signin" | "signup" | "detail" | "profile" | "saved" | "add-opportunity";
 type IconName =
   | "arrow"
   | "bookmark"
@@ -12,6 +12,7 @@ type IconName =
   | "check"
   | "chevron"
   | "clock"
+  | "close"
   | "heart"
   | "leaf"
   | "location"
@@ -119,6 +120,7 @@ function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
         <path d="M12 7v5l3 2" />
       </>
     ),
+    close: <path d="M6 6l12 12M18 6 6 18" />,
     heart: (
       <path d="M20.8 5.8a5.4 5.4 0 0 0-7.6 0L12 7l-1.2-1.2a5.4 5.4 0 1 0-7.6 7.6L12 22l8.8-8.6a5.4 5.4 0 0 0 0-7.6Z" />
     ),
@@ -198,6 +200,7 @@ function Button({
   onClick,
   type = "button",
   style,
+  disabled = false,
 }: {
   children: ReactNode;
   variant?: "primary" | "secondary" | "quiet";
@@ -205,13 +208,15 @@ function Button({
   onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
   type?: "button" | "submit";
   style?: CSSProperties;
+  disabled?: boolean;
 }) {
   return (
     <button
       type={type}
-      className={`Button button--${variant} ${className}`}
+      className={`button button--${variant} ${className}`}
       onClick={onClick}
       style={style}
+      disabled={disabled}
     >
       {children}
     </button>
@@ -259,10 +264,14 @@ function Header({
   page,
   go,
   showAddOpportunity,
+  loggedIn,
+  onSignOut,
 }: {
   page: Page;
   go: (page: Page) => void;
   showAddOpportunity: boolean;
+  loggedIn: boolean;
+  onSignOut: () => void;
 }) {
   return (
     <header className="header">
@@ -292,9 +301,20 @@ function Header({
             Add Opportunities
           </Button>
         )}
-        <Button variant="secondary" className="header__signin" onClick={() => go("auth")}>
-          Sign in
-        </Button>
+        <div className="header__auth">
+          {loggedIn ? (
+            <Button variant="secondary" onClick={onSignOut}>
+              Sign out
+            </Button>
+          ) : (
+            <>
+              <Button variant="secondary" onClick={() => go("signin")}>
+                Sign in
+              </Button>
+              <Button onClick={() => go("signup")}>Register</Button>
+            </>
+          )}
+        </div>
         <button className="mobile-menu" aria-label="Open menu">
           <Icon name="menu" />
         </button>
@@ -605,79 +625,7 @@ function BrowsePage({
 }
 
 
-function AuthPage({
-  go,
-  onAuthenticated,
-}: {
-  go: (page: Page) => void;
-  onAuthenticated: (profile: Profile) => void;
-}) {
-  const [role, setRole] = useState("Volunteer");
-  const [authMessage, setAuthMessage] = useState<string | null>(null);
-  const [formError, setFormError] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  // Handle Login via FastAPI /login endpoint
-  const handleSignIn = async (form: HTMLFormElement) => {
-    setFormError("");
-    setAuthMessage(null);
-    setLoading(true);
-
-    const data = new FormData(form);
-    const email = String(data.get("email")).trim().toLowerCase();
-    const password = String(data.get("password"));
-
-    try {
-      const res = await api.login({ email, password });
-      onAuthenticated(res.user);
-      setAuthMessage("Logged in successfully!");
-
-      // Navigate to the main page after 1.5 seconds
-      setTimeout(() => {
-        go("browse");
-      }, 1500);
-    } catch (err: any) {
-      setFormError(err.message || "Failed to sign in.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Handle Signup via FastAPI signup endpoint
-  const handleSignUp = async (form: HTMLFormElement) => {
-    setFormError("");
-    setAuthMessage(null);
-    setLoading(true);
-
-    const data = new FormData(form);
-    const name = String(data.get("name")).trim();
-    const email = String(data.get("email")).trim().toLowerCase();
-    const phone = String(data.get("phone"));
-    const password = String(data.get("password"));
-
-    try {
-      const payload = {
-        name,
-        email,
-        phone,
-        password,
-        role: role === "Organization" ? "organisation" : "volunteer",
-      };
-      const res = await api.signup(payload);
-      onAuthenticated(res.user || payload);
-      setAuthMessage("Registered successfully!");
-
-      // Navigate to the main page after 1.5 seconds
-      setTimeout(() => {
-        go("browse");
-      }, 1500);
-    } catch (err: any) {
-      setFormError(err.message || "Failed to create account.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
+function AuthLayout({ children, onClose }: { children: ReactNode; onClose: () => void }) {
   return (
     <main className="auth-page">
       <section className="auth-aside">
@@ -686,109 +634,225 @@ function AuthPage({
             <Icon name="heart" size={28} />
           </span>
           <p className="eyebrow">Your time matters</p>
-          <h1>Small actions.<br />Real change.</h1>
+          <h1>
+            Small actions.
+            <br />
+            Real change.
+          </h1>
         </div>
       </section>
       <section className="auth-form-wrap">
-        <div className="auth-card">
-          {authMessage ? (
-            <div className="success-state" style={{ textAlign: "center", padding: "2rem 0" }}>
-              <span style={{ color: "#10b981", display: "inline-block", marginBottom: "1rem" }}>
-                <Icon name="check" size={40} />
-              </span>
-              <h2 style={{ color: "#10b981" }}>{authMessage}</h2>
-              <p>Redirecting you to the main page...</p>
-            </div>
-          ) : (
-            <>
-              <p className="eyebrow">Authentication</p>
-              <h2>Welcome</h2>
-              <p className="form-intro">
-                Fill in your details below, then choose whether to sign in or create a new account.
-              </p>
-
-              <form onSubmit={(e) => e.preventDefault()}>
-                <label className="field">
-                  <span>I’m acting as</span>
-                  <span className="select-control">
-                    <Icon name={role === "Volunteer" ? "user" : "users"} size={18} />
-                    <select value={role} onChange={(event) => setRole(event.target.value)}>
-                      <option>Volunteer</option>
-                      <option>Organization</option>
-                    </select>
-                    <Icon name="chevron" size={16} />
-                  </span>
-                </label>
-
-                <Field
-                  label={role === "Volunteer" ? "Full name (for signup)" : "Organization name (for signup)"}
-                  icon="user"
-                  name="name"
-                  placeholder={role === "Volunteer" ? "Taylor Morgan" : "Your organization"}
-                />
-                <Field
-                  label="Email address"
-                  icon="mail"
-                  name="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  required
-                />
-                <Field
-                  label="Phone number (for signup)"
-                  icon="phone"
-                  name="phone"
-                  type="tel"
-                  placeholder="(555) 000-0000"
-                />
-                <Field
-                  label="Password"
-                  icon="bookmark"
-                  name="password"
-                  type="password"
-                  placeholder=""
-                  required
-                />
-
-                {formError && (
-                  <p className="form-error" role="alert">
-                    {formError}
-                  </p>
-                )}
-
-                <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className="full-button"
-                    disabled={loading}
-                    onClick={(e) => {
-                      const form = e.currentTarget.closest("form");
-                      if (form) handleSignIn(form);
-                    }}
-                  >
-                    {loading ? "Please wait..." : "Sign in"} <Icon name="arrow" size={18} />
-                  </Button>
-
-                  <Button
-                    type="button"
-                    variant="primary"
-                    className="full-button"
-                    disabled={loading}
-                    onClick={(e) => {
-                      const form = e.currentTarget.closest("form");
-                      if (form) handleSignUp(form);
-                    }}
-                  >
-                    {loading ? "Please wait..." : "Create account"} <Icon name="arrow" size={18} />
-                  </Button>
-                </div>
-              </form>
-            </>
-          )}
-        </div>
+        <button
+          type="button"
+          className="auth-close"
+          onClick={onClose}
+          aria-label="Close and go back to opportunities"
+        >
+          <Icon name="close" size={20} />
+        </button>
+        <div className="auth-card">{children}</div>
       </section>
     </main>
+  );
+}
+
+function AuthSuccess({ title, go }: { title: string; go: (page: Page) => void }) {
+  return (
+    <div className="success-state">
+      <span>
+        <Icon name="check" size={30} />
+      </span>
+      <h2>{title}</h2>
+      <p>Welcome to Count Me In. Let’s find your next opportunity.</p>
+      <Button onClick={() => go("browse")}>
+        Browse opportunities <Icon name="arrow" size={18} />
+      </Button>
+    </div>
+  );
+}
+
+function SignInPage({
+  go,
+  onAuthenticated,
+}: {
+  go: (page: Page) => void;
+  onAuthenticated: (profile: Profile) => void;
+}) {
+  const [submitted, setSubmitted] = useState(false);
+  const [formError, setFormError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setFormError("");
+    setLoading(true);
+    const data = new FormData(event.currentTarget);
+    const email = String(data.get("email")).trim().toLowerCase();
+    const password = String(data.get("password"));
+    try {
+      const res = await api.login({ email, password });
+      onAuthenticated(res.user);
+      setSubmitted(true);
+    } catch (err: any) {
+      setFormError(err.message || "We could not match that email and password.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <AuthLayout onClose={() => go("browse")}>
+      {submitted ? (
+        <AuthSuccess title="You're signed in!" go={go} />
+      ) : (
+        <>
+          <p className="eyebrow">Welcome back</p>
+          <h2>Good to see you.</h2>
+          <p className="form-intro">
+            New to Count Me In?{" "}
+            <button type="button" onClick={() => go("signup")}>
+              Create an account
+            </button>
+          </p>
+          <form onSubmit={handleSubmit}>
+            <Field
+              label="Email address"
+              icon="mail"
+              name="email"
+              type="email"
+              placeholder="you@example.com"
+              required
+            />
+            <Field
+              label="Password"
+              icon="bookmark"
+              name="password"
+              type="password"
+              placeholder="Your password"
+              required
+            />
+            {formError && (
+              <p className="form-error" role="alert">
+                {formError}
+              </p>
+            )}
+            <Button type="submit" className="full-button" disabled={loading}>
+              {loading ? "Signing in…" : "Sign in"} <Icon name="arrow" size={18} />
+            </Button>
+          </form>
+        </>
+      )}
+    </AuthLayout>
+  );
+}
+
+function SignUpPage({
+  go,
+  onAuthenticated,
+}: {
+  go: (page: Page) => void;
+  onAuthenticated: (profile: Profile) => void;
+}) {
+  const [role, setRole] = useState("Volunteer");
+  const [submitted, setSubmitted] = useState(false);
+  const [formError, setFormError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setFormError("");
+    setLoading(true);
+    const data = new FormData(event.currentTarget);
+    const payload = {
+      name: String(data.get("name")).trim(),
+      email: String(data.get("email")).trim().toLowerCase(),
+      phone: String(data.get("phone")),
+      password: String(data.get("password")),
+      role: role === "Organization" ? "organisation" : "volunteer",
+    };
+    try {
+      const res = await api.signup(payload);
+      onAuthenticated(
+        res.user ?? { ...payload, id: Date.now(), created_at: new Date().toISOString() },
+      );
+      setSubmitted(true);
+    } catch (err: any) {
+      setFormError(err.message || "Failed to create account.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <AuthLayout onClose={() => go("browse")}>
+      {submitted ? (
+        <AuthSuccess title="You're all set!" go={go} />
+      ) : (
+        <>
+          <p className="eyebrow">Create your account</p>
+          <h2>Count yourself in.</h2>
+          <p className="form-intro">
+            Already have an account?{" "}
+            <button type="button" onClick={() => go("signin")}>
+              Sign in
+            </button>
+          </p>
+          <form onSubmit={handleSubmit}>
+            <label className="field">
+              <span>I’m signing up as</span>
+              <span className="select-control">
+                <Icon name={role === "Volunteer" ? "user" : "users"} size={18} />
+                <select value={role} onChange={(event) => setRole(event.target.value)}>
+                  <option>Volunteer</option>
+                  <option>Organization</option>
+                </select>
+                <Icon name="chevron" size={16} />
+              </span>
+            </label>
+            <Field
+              label={role === "Volunteer" ? "Full name" : "Organization name"}
+              icon="user"
+              name="name"
+              placeholder={role === "Volunteer" ? "Taylor Morgan" : "Your organization"}
+              required
+            />
+            <Field
+              label="Email address"
+              icon="mail"
+              name="email"
+              type="email"
+              placeholder="you@example.com"
+              required
+            />
+            <Field
+              label="Phone number"
+              icon="phone"
+              name="phone"
+              type="tel"
+              placeholder="(555) 000-0000"
+              required
+            />
+            <Field
+              label="Password"
+              icon="bookmark"
+              name="password"
+              type="password"
+              placeholder="At least 8 characters"
+              required
+            />
+            {formError && (
+              <p className="form-error" role="alert">
+                {formError}
+              </p>
+            )}
+            <Button type="submit" className="full-button" disabled={loading}>
+              {loading ? "Creating account…" : "Create account"} <Icon name="arrow" size={18} />
+            </Button>
+          </form>
+          <p className="terms">By joining, you agree to our Terms of Service and Privacy Policy.</p>
+        </>
+      )}
+    </AuthLayout>
   );
 }
 
@@ -803,7 +867,6 @@ function DetailPage({
   toggleSaved: () => void;
   go: (page: Page) => void;
 }) {
-  const [registered, setRegistered] = useState(false);
   return (
     <main>
       <div className="shell detail-page">
@@ -887,18 +950,27 @@ function DetailPage({
           </article>
           <aside className="register-card">
             <p className="eyebrow">Ready to help?</p>
-            <h2>{registered ? "You’re registered!" : "Count me in"}</h2>
-            <p>{registered ? "" : ""}</p>
-            <Button className="full-button" onClick={() => setRegistered(!registered)}>
-              {registered ? (
-                <>
-                  <Icon name="check" size={18} /> Registered
-                </>
-              ) : (
-                "Register for this opportunity"
-              )}
-            </Button>
-            <small className="no-charge"></small>
+            <h2>Count me in</h2>
+            {item.url ? (
+              <>
+                <p>You’ll finish registering on {item.org}’s website.</p>
+                <a
+                  className="button button--primary full-button"
+                  href={item.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Register for this opportunity <Icon name="arrow" size={18} />
+                </a>
+              </>
+            ) : (
+              <>
+                <p>This organization hasn’t added a registration link yet.</p>
+                <Button className="full-button" disabled>
+                  Registration unavailable
+                </Button>
+              </>
+            )}
           </aside>
         </div>
       </div>
@@ -1088,10 +1160,26 @@ export default function App() {
     window.scrollTo(0, 0);
   };
   const isOrganization = logged_in && currentProfile?.role.toLowerCase() === "organisation";
+  const handleAuthenticated = (profile: Profile) => {
+    setCurrentProfile(profile);
+    setLoggedIn(true);
+  };
 
   return (
     <div className="app">
-      {page !== "auth" && <Header page={page} go={go} showAddOpportunity={isOrganization} />}
+      {page !== "signin" && page !== "signup" && (
+        <Header
+          page={page}
+          go={go}
+          showAddOpportunity={isOrganization}
+          loggedIn={logged_in}
+          onSignOut={() => {
+            setCurrentProfile(null);
+            setLoggedIn(false);
+            go("browse");
+          }}
+        />
+      )}
       {page === "browse" && (
         <BrowsePage
           opportunities={opportunities}
@@ -1104,16 +1192,8 @@ export default function App() {
           setUserAge={setUserAge}
         />
       )}
-      {page === "auth" && (
-        <AuthPage
-          go={go}
-          profiles={profiles}
-          onAuthenticated={(profile) => {
-            setCurrentProfile(profile);
-            setLoggedIn(true);
-          }}
-        />
-      )}
+      {page === "signin" && <SignInPage go={go} onAuthenticated={handleAuthenticated} />}
+      {page === "signup" && <SignUpPage go={go} onAuthenticated={handleAuthenticated} />}
       {page === "detail" && detail && (
         <DetailPage
           item={detail}
