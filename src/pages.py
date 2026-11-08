@@ -103,7 +103,6 @@ def login_user(payload: Dict[Any, Any] = Body(...)):
         if not email or not password:
             raise HTTPException(status_code=400, detail="Email and password are required")
 
-        # Query profiles by email
         response = supabase.table("profiles").select("*").eq("email", email).execute()
 
         if not response.data or len(response.data) == 0:
@@ -111,7 +110,6 @@ def login_user(payload: Dict[Any, Any] = Body(...)):
 
         user_record = response.data[0]
 
-        # Verify password matches
         if user_record.get("password") != password:
             raise HTTPException(status_code=401, detail="Incorrect password.")
 
@@ -125,50 +123,52 @@ def login_user(payload: Dict[Any, Any] = Body(...)):
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
-@app.post("/applications")
-def create_application(payload: Dict[Any, Any] = Body(...)):
+
+
+
+import folium
+from fastapi.responses import HTMLResponse
+
+@app.get("/map", response_class=HTMLResponse)
+def generate_opportunities_map():
     try:
-        # Remove any accidental ID
-        payload.pop("id", None)
+        response = supabase.table("opportunities").select("*").execute()
+        opportunities = response.data
 
-        # Get profile-id and the opportunity name (checking a few possible key names)
-        profile_id = payload.get("profile-id") or payload.get("profile_id")
-        opportunity_name = payload.get("opportunity-name") or payload.get("opportunity_name") or payload.get("title")
+        if not opportunities:
+            return "<h3>No active opportunities found to map.</h3>"
 
-        if not profile_id or not opportunity_name:
-            raise HTTPException(status_code=400, detail="profile-id and opportunity-name (or title) are required")
+        first_opp = opportunities[0]
+        center_lat = first_opp.get("latitude") or 43.6532
+        center_lon = first_opp.get("longitude") or -79.3832
 
-        # 1. Verify that the user profile exists
-        profile_check = supabase.table("profiles").select("*").eq("id", profile_id).execute()
-        if not profile_check.data:
-            raise HTTPException(status_code=404, detail="Profile not found")
+        m = folium.Map(location=[center_lat, center_lon], zoom_start=12)
 
-        # 2. Look up the opportunity by its title/name to find its real ID
-        opp_check = supabase.table("opportunities").select("*").eq("title", opportunity_name).execute()
-        if not opp_check.data:
-            raise HTTPException(status_code=404, detail=f"Opportunity '{opportunity_name}' not found")
+        for opp in opportunities:
+            lat = opp.get("latitude")
+            lon = opp.get("longitude")
+            title = opp.get("title", "Volunteer Opportunity")
+            location_name = opp.get("location-name") or opp.get("location_name") or "Location TBA"
+            description = opp.get("description", "")
 
-        # Extract the actual ID from the matching opportunity record
-        opportunity_record = opp_check.data[0]
-        opportunity_id = opportunity_record["id"]
+            if lat is not None and lon is not None:
+                popup_html = f"""
+                <div style="font-family: Arial, sans-serif; width: 200px;">
+                    <h4 style="margin: 0 0 5px 0; color: #2c3e50;">{title}</h4>
+                    <p style="margin: 0 0 5px 0; font-size: 13px; color: #7f8c8d;"><b>Location:</b> {location_name}</p>
+                    <p style="margin: 0; font-size: 12px;">{description[:100]}...</p>
+                </div>
+                """
+                
+                folium.Marker(
+                    location=[lat, lon],
+                    popup=folium.Popup(popup_html, max_width=250),
+                    tooltip=title,
+                    icon=folium.Icon(color="red", icon="heart", prefix="fa")
+                ).add_to(m)
 
-        # 3. Prepare the data row for your form-applications table
-        application_data = {
-            "profile-id": profile_id,
-            "opportunity-id": opportunity_id,
-            "message": payload.get("message", "")
-        }
+        return m._repr_html_()
 
-        # Insert application into Supabase
-        response = supabase.table("form-applications").insert(application_data).execute()
-        
-        return {
-            "message": "Application submitted successfully!",
-            "application": response.data[0]
-        }
-
-    except HTTPException as he:
-        raise he
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
