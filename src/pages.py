@@ -57,13 +57,3 @@ def create_opportunity(payload: Dict[Any, Any] = Body(...)):
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.get("/profiles"):
-def get_all_profiles(): 
-    try:
-        reponse = subase.table("profiles").select("*").execute()
-        return response.data
-    except Exception as e:
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
