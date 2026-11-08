@@ -218,14 +218,14 @@ def generate_opportunities_map(
             
         print("IDs received from React:", ids)
         print("Supabase opportunities:", [
-    {"id": opp["id"], "title": opp["title"]}
-    for opp in opportunities
-])
+                {"id": opp["id"], "title": opp["title"]}
+                for opp in opportunities
+                ])
         if not opportunities:
             return "<h3>No active opportunities found to map.</h3>"
 
 
-        first_opp = opportunities[1]
+        first_opp = opportunities[0]
         center_lat = first_opp.get("latitude") or 43.6532
         center_lon = first_opp.get("longitude") or -79.3832
 
