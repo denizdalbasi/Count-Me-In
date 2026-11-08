@@ -197,15 +197,22 @@ function Button({
   className = "",
   onClick,
   type = "button",
+  style,
 }: {
   children: ReactNode;
   variant?: "primary" | "secondary" | "quiet";
   className?: string;
-  onClick?: () => void;
+  onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
   type?: "button" | "submit";
+  style?: CSSProperties;
 }) {
   return (
-    <button type={type} className={`button button--${variant} ${className}`} onClick={onClick}>
+    <button
+      type={type}
+      className={`Button button--${variant} ${className}`}
+      onClick={onClick}
+      style={style}
+    >
       {children}
     </button>
   );
@@ -410,6 +417,8 @@ function BrowsePage({
   goDetail,
   searchQuery,
   setSearchQuery,
+  userAge,
+  setUserAge,
 }: {
   opportunities: Opportunity[];
   saved: number[];
@@ -417,6 +426,8 @@ function BrowsePage({
   goDetail: (id: number) => void;
   searchQuery: string;
   setSearchQuery: (value: string) => void;
+  userAge: string;
+  setUserAge: (value: string) => void;
 }) {
   const [distance, setDistance] = useState(8);
   const [time, setTime] = useState("Any time");
@@ -478,6 +489,17 @@ function BrowsePage({
       </section>
       <section className="filters">
         <div className="shell filters__inner">
+          <label className="filter-field age-filter">
+            <span>Your age</span>
+            <input
+              type="number"
+              min="1"
+              max="120"
+              placeholder="Enter age"
+              value={userAge}
+              onChange={(event) => setUserAge(event.target.value)}
+            />
+          </label>
           <label className="filter-field search-filter">
             <span>Search</span>
             <span className="search-field">
@@ -582,19 +604,80 @@ function BrowsePage({
   );
 }
 
+
 function AuthPage({
   go,
-  profiles,
   onAuthenticated,
 }: {
   go: (page: Page) => void;
-  profiles: Profile[];
   onAuthenticated: (profile: Profile) => void;
 }) {
   const [role, setRole] = useState("Volunteer");
-  const [submitted, setSubmitted] = useState(false);
-  const [mode, setMode] = useState<"signup" | "signin">("signup");
+  const [authMessage, setAuthMessage] = useState<string | null>(null);
   const [formError, setFormError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  // Handle Login via FastAPI /login endpoint
+  const handleSignIn = async (form: HTMLFormElement) => {
+    setFormError("");
+    setAuthMessage(null);
+    setLoading(true);
+
+    const data = new FormData(form);
+    const email = String(data.get("email")).trim().toLowerCase();
+    const password = String(data.get("password"));
+
+    try {
+      const res = await api.login({ email, password });
+      onAuthenticated(res.user);
+      setAuthMessage("Logged in successfully!");
+
+      // Navigate to the main page after 1.5 seconds
+      setTimeout(() => {
+        go("browse");
+      }, 1500);
+    } catch (err: any) {
+      setFormError(err.message || "Failed to sign in.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle Signup via FastAPI signup endpoint
+  const handleSignUp = async (form: HTMLFormElement) => {
+    setFormError("");
+    setAuthMessage(null);
+    setLoading(true);
+
+    const data = new FormData(form);
+    const name = String(data.get("name")).trim();
+    const email = String(data.get("email")).trim().toLowerCase();
+    const phone = String(data.get("phone"));
+    const password = String(data.get("password"));
+
+    try {
+      const payload = {
+        name,
+        email,
+        phone,
+        password,
+        role: role === "Organization" ? "organisation" : "volunteer",
+      };
+      const res = await api.signup(payload);
+      onAuthenticated(res.user || payload);
+      setAuthMessage("Registered successfully!");
+
+      // Navigate to the main page after 1.5 seconds
+      setTimeout(() => {
+        go("browse");
+      }, 1500);
+    } catch (err: any) {
+      setFormError(err.message || "Failed to create account.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <main className="auth-page">
       <section className="auth-aside">
@@ -603,83 +686,30 @@ function AuthPage({
             <Icon name="heart" size={28} />
           </span>
           <p className="eyebrow">Your time matters</p>
-          <h1>
-            Small actions.
-            <br />
-            Real change.
-          </h1>
-          <p></p>
-          <div className="impact">
-            <div>
-              <strong></strong>
-              <span></span>
-            </div>
-            <div>
-              <strong></strong>
-              <span></span>
-            </div>
-          </div>
+          <h1>Small actions.<br />Real change.</h1>
         </div>
       </section>
       <section className="auth-form-wrap">
         <div className="auth-card">
-          {submitted ? (
-            <div className="success-state">
-              <span>
-                <Icon name="check" size={30} />
+          {authMessage ? (
+            <div className="success-state" style={{ textAlign: "center", padding: "2rem 0" }}>
+              <span style={{ color: "#10b981", display: "inline-block", marginBottom: "1rem" }}>
+                <Icon name="check" size={40} />
               </span>
-              <h2>You're all set!</h2>
-              <p>Welcome to Count Me In. Let’s find your first opportunity.</p>
-              <Button onClick={() => go("browse")}>
-                Browse opportunities <Icon name="arrow" size={18} />
-              </Button>
+              <h2 style={{ color: "#10b981" }}>{authMessage}</h2>
+              <p>Redirecting you to the main page...</p>
             </div>
           ) : (
             <>
-              <p className="eyebrow">
-                {mode === "signup" ? "Create your account" : "Welcome back"}
-              </p>
-              <h2>{mode === "signup" ? "Count yourself in." : "Good to see you."}</h2>
+              <p className="eyebrow">Authentication</p>
+              <h2>Welcome</h2>
               <p className="form-intro">
-                {mode === "signup" ? "Already have an account?" : "New to Count Me In?"}{" "}
-                <button onClick={() => setMode(mode === "signup" ? "signin" : "signup")}>
-                  {mode === "signup" ? "Sign in" : "Create an account"}
-                </button>
+                Fill in your details below, then choose whether to sign in or create a new account.
               </p>
-              <form
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  setFormError("");
-                  const data = new FormData(event.currentTarget);
-                  const email = String(data.get("email")).trim().toLowerCase();
-                  const password = String(data.get("password"));
 
-                  if (mode === "signin") {
-                    const profile = profiles.find(
-                      (candidate) =>
-                        candidate.email.toLowerCase() === email && candidate.password === password,
-                    );
-                    if (!profile) {
-                      setFormError("We could not match that email and password to a profile.");
-                      return;
-                    }
-                    onAuthenticated(profile);
-                  } else {
-                    onAuthenticated({
-                      id: Date.now(),
-                      created_at: new Date().toISOString(),
-                      name: String(data.get("name")).trim(),
-                      role: role === "Organization" ? "organisation" : "volunteer",
-                      email,
-                      phone: String(data.get("phone")),
-                      password,
-                    });
-                  }
-                  setSubmitted(true);
-                }}
-              >
+              <form onSubmit={(e) => e.preventDefault()}>
                 <label className="field">
-                  <span>I’m {mode === "signup" ? "signing up" : "signing in"} as</span>
+                  <span>I’m acting as</span>
                   <span className="select-control">
                     <Icon name={role === "Volunteer" ? "user" : "users"} size={18} />
                     <select value={role} onChange={(event) => setRole(event.target.value)}>
@@ -689,15 +719,13 @@ function AuthPage({
                     <Icon name="chevron" size={16} />
                   </span>
                 </label>
-                {mode === "signup" && (
-                  <Field
-                    label={role === "Volunteer" ? "Full name" : "Organization name"}
-                    icon="user"
-                    name="name"
-                    placeholder={role === "Volunteer" ? "Taylor Morgan" : "Your organization"}
-                    required
-                  />
-                )}
+
+                <Field
+                  label={role === "Volunteer" ? "Full name (for signup)" : "Organization name (for signup)"}
+                  icon="user"
+                  name="name"
+                  placeholder={role === "Volunteer" ? "Taylor Morgan" : "Your organization"}
+                />
                 <Field
                   label="Email address"
                   icon="mail"
@@ -706,38 +734,56 @@ function AuthPage({
                   placeholder="you@example.com"
                   required
                 />
-                {mode === "signup" && (
-                  <Field
-                    label="Phone number"
-                    icon="phone"
-                    name="phone"
-                    type="tel"
-                    placeholder="(555) 000-0000"
-                    required
-                  />
-                )}
+                <Field
+                  label="Phone number (for signup)"
+                  icon="phone"
+                  name="phone"
+                  type="tel"
+                  placeholder="(555) 000-0000"
+                />
                 <Field
                   label="Password"
                   icon="bookmark"
                   name="password"
                   type="password"
-                  placeholder="At least 8 characters"
+                  placeholder=""
                   required
                 />
+
                 {formError && (
                   <p className="form-error" role="alert">
                     {formError}
                   </p>
                 )}
-                <Button type="submit" className="full-button">
-                  {mode === "signup" ? "Create account" : "Sign in"} <Icon name="arrow" size={18} />
-                </Button>
+
+                <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="full-button"
+                    disabled={loading}
+                    onClick={(e) => {
+                      const form = e.currentTarget.closest("form");
+                      if (form) handleSignIn(form);
+                    }}
+                  >
+                    {loading ? "Please wait..." : "Sign in"} <Icon name="arrow" size={18} />
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="primary"
+                    className="full-button"
+                    disabled={loading}
+                    onClick={(e) => {
+                      const form = e.currentTarget.closest("form");
+                      if (form) handleSignUp(form);
+                    }}
+                  >
+                    {loading ? "Please wait..." : "Create account"} <Icon name="arrow" size={18} />
+                  </Button>
+                </div>
               </form>
-              {mode === "signup" && (
-                <p className="terms">
-                  By joining, you agree to our Terms of Service and Privacy Policy.
-                </p>
-              )}
             </>
           )}
         </div>
@@ -974,6 +1020,7 @@ function SavedPage({
 export default function App() {
   const [opportunities, setOpportunities] = useState<Opportunity[]>(mockOpportunities);
   const [searchQuery, setSearchQuery] = useState("");
+  const [userAge, setUserAge] = useState("");
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [logged_in, setLoggedIn] = useState(false);
   const [currentProfile, setCurrentProfile] = useState<Profile | null>(null);
@@ -991,7 +1038,7 @@ export default function App() {
     let cancelled = false;
     const timer = setTimeout(() => {
       api
-        .getOpportunities(searchQuery)
+        .getOpportunities(searchQuery, userAge)
         .then((data) => {
           if (!cancelled) {
             setOpportunities(data);
@@ -1007,7 +1054,7 @@ export default function App() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [searchQuery]);
+  }, [searchQuery, userAge]);
   const [page, setPage] = useState<Page>("browse");
   const [saved, setSaved] = useState<number[]>(() => {
     const stored = localStorage.getItem("savedOpportunities");
@@ -1053,6 +1100,8 @@ export default function App() {
           goDetail={goDetail}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
+          userAge={userAge}
+          setUserAge={setUserAge}
         />
       )}
       {page === "auth" && (

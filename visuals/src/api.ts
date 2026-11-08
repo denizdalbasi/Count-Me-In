@@ -73,15 +73,23 @@ function convertOpportunity(item: SupabaseOpportunity, organizationName?: string
 
 export const api = {
   // Opportunities - matches FastAPI routes exactly
-  getOpportunities: async (title: string = "") => {
-    const params = new URLSearchParams();
-    if (title.trim()) {
-      params.set("title", title.trim());
-    }
-    const url = `/opportunities${params.toString() ? `?${params.toString()}` : ""}`;
-    const data = await request<SupabaseOpportunity[]>(url);
-    return data.map((item) => convertOpportunity(item));
-  },
+  getOpportunities: async (title: string = "", age: string = "") => {
+  const params = new URLSearchParams();
+
+  if (title.trim()) {
+    params.set("title", title.trim());
+  }
+
+  if (age.trim()) {
+    params.set("minAge", age.trim());
+    params.set("maxAge", age.trim());
+  }
+
+  const url = `/opportunities${params.toString() ? `?${params.toString()}` : ""}`;
+
+  const data = await request<SupabaseOpportunity[]>(url);
+  return data.map((item) => convertOpportunity(item));
+},
   
   createOpportunity: async (opportunity: NewOpportunity) => {
     const categoryId = CATEGORIES.indexOf(opportunity.category) + 1;
@@ -114,9 +122,12 @@ export const api = {
     
   signin: (body: { email: string; password: string }) =>
     request("/login", { method: "POST", body: JSON.stringify(body) }),
+
+  // Added `login` alias so both signin and login naming conventions work seamlessly
+  login: (body: { email: string; password: string }) =>
+    request("/login", { method: "POST", body: JSON.stringify(body) }),
     
   getProfile: async () => {
-    // If you don't have a specific GET /profile token route yet, fallback to profiles
     const profiles = await request<Profile[]>("/profiles");
     return profiles[0] ?? { name: "Taylor Morgan", email: "taylor@example.com", phone: "(555) 014-2836", role: "volunteer" };
   },

@@ -202,9 +202,12 @@
   min-height: 86px;
   display: grid;
   grid-template-columns:
-    minmax(250px, 1.25fr) minmax(260px, 0.9fr) minmax(210px, 0.8fr)
-    190px;
-  gap: 18px;
+    minmax(220px, 2fr)
+    minmax(80px, 0.5fr)
+    minmax(180px, 1.3fr)
+    minmax(160px, 1fr)
+    minmax(150px, 1fr);
+  gap: 20px;
   align-items: center;
   justify-content: center;
 }
