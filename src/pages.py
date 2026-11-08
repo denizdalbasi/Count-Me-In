@@ -1,6 +1,6 @@
 import os
 from typing import *
-from fastapi import FastAPI, HTTPException, Body
+from fastapi import FastAPI, HTTPException, Body, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from dotenv import load_dotenv
@@ -190,11 +190,24 @@ def login_user(payload: Dict[Any, Any] = Body(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/map", response_class=HTMLResponse)
-def generate_opportunities_map():
+def generate_opportunities_map(
+       ids: list[int] = Query(default=[])
+):
     try:
         response = supabase.table("opportunities").select("*").execute()
         opportunities = response.data
 
+        
+        if ids:
+            opportunities = [
+                opp for opp in opportunities
+                if opp["id"] in ids ]
+            
+        print("IDs received from React:", ids)
+        print("Supabase opportunities:", [
+    {"id": opp["id"], "title": opp["title"]}
+    for opp in opportunities
+])
         if not opportunities:
             return "<h3>No active opportunities found to map.</h3>"
 
