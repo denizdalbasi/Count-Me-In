@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from dotenv import load_dotenv
 from supabase import create_client, Client
+from datetime import datetime, timedelta, timezone
 import traceback
 import folium
 
@@ -52,7 +53,8 @@ def get_opportunities(
     minAge: Optional[int] = None,
     maxAge: Optional[int] = None,
     location: Optional[str] = None,
-    created_at: Optional[str] = None
+    created_at: Optional[str] = None,  
+    time_filter: Optional[str] = None
 ):
     try:
         query = supabase.table("opportunities").select("*")
@@ -62,24 +64,35 @@ def get_opportunities(
         if categoryId:
             query = query.eq("category-id", categoryId)
         if minAge is not None:
-            query = query.lte("min_age", minAge)
+            query = query.lte("min-age", minAge)  
         if maxAge is not None:
-            query = query.gte("max_age", maxAge)
+            query = query.gte("max-age", maxAge) 
         if location:
             query = query.ilike("location-name", f"%{location}%")
-        if created_at:
-            query = query.ilike("created_at", f"%{created_at}%")
 
+        if time_filter:
+            now = datetime.now(timezone.utc)
+            if time_filter == "Last week":
+                cutoff = now - timedelta(days=7)
+            elif time_filter == "Last month":
+                cutoff = now - timedelta(days=30)
+            elif time_filter == "Last 24 hours":
+                cutoff = now - timedelta(hours=24)
+            else:
+                cutoff = None
+
+            if cutoff is not None:
+                query = query.gte("created_at", cutoff.isoformat())    
+        
         response = query.execute()
-        opportunities_data = response.data
+        opportunities_data = response.data or []
 
-        # 2. Fetch profiles and categories to map names and strip IDs for frontend
         profiles_response = supabase.table("profiles").select("id, name").execute()
-        profiles_map = {p["id"]: p["name"] for p in profiles_response.data}
+        profiles_map = {p["id"]: p["name"] for p in (profiles_response.data or [])}
 
         try:
             categories_response = supabase.table("categories").select("id, name").execute()
-            categories_map = {c["id"]: c["name"] for c in categories_response.data}
+            categories_map = {c["id"]: c["name"] for c in (categories_response.data or [])}
         except Exception:
             categories_map = {}
 
@@ -87,11 +100,9 @@ def get_opportunities(
             org_id = opp.get("organization-id") or opp.get("organization_id")
             cat_id = opp.get("category-id") or opp.get("category_id")
 
-            # Inject human-readable names for UI visuals
             opp["orgName"] = profiles_map.get(org_id, "Unknown Organisation")
             opp["categoryName"] = categories_map.get(cat_id, "General")
 
-            # Strip internal database IDs from the payload sent to React
             opp.pop("organization-id", None)
             opp.pop("organization_id", None)
             opp.pop("category-id", None)
@@ -103,6 +114,8 @@ def get_opportunities(
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
+
+    
 @app.post("/opportunities")
 def create_opportunity(payload: Dict[Any, Any] = Body(...)):
     try:

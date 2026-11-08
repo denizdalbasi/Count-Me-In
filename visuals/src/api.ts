@@ -73,7 +73,7 @@ function convertOpportunity(item: SupabaseOpportunity, organizationName?: string
 
 export const api = {
   // Opportunities - matches FastAPI routes exactly
-  getOpportunities: async (title: string = "", age: string = "") => {
+  getOpportunities: async (title: string = "", age: string = "", timeFilter: string = "") => {
   const params = new URLSearchParams();
 
   if (title.trim()) {
@@ -83,6 +83,10 @@ export const api = {
   if (age.trim()) {
     params.set("minAge", age.trim());
     params.set("maxAge", age.trim());
+  }
+
+  if (timeFilter && timeFilter !== "Any time") {
+    params.set("time_filter", timeFilter);
   }
 
   const url = `/opportunities${params.toString() ? `?${params.toString()}` : ""}`;
