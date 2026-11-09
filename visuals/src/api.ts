@@ -120,7 +120,6 @@ export const api = {
 
   getProfiles: () => request<Profile[]>("/profiles"),
 
-  // Accounts - matches FastAPI /signup and /login routes
   signup: (body: { role: string; name: string; email: string; phone: string; password: string }) =>
     request<{ message: string; user: Profile }>("/signup", { method: "POST", body: JSON.stringify(body) }),
     
