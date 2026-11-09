@@ -401,28 +401,33 @@ function Map({
   onSelect: (id: number) => void;
 }) {
   const selectedOpportunity = items.find((item) => item.id === selected);
+  
+  // Use VITE_API_URL dynamically, with your PythonAnywhere link as a safe fallback
+  const apiBase = import.meta.env.VITE_API_URL || "https://admin684584165418645.pythonanywhere.com";
+  
   const mapUrl =
-  items.length > 0
-    ? `http://127.0.0.1:8000/map?${items
-        .map((item) => `ids=${encodeURIComponent(item.id)}`)
-        .join("&")}`
-    : "";
+    items.length > 0
+      ? `${apiBase}/map?${items
+          .map((item) => `ids=${encodeURIComponent(item.id)}`)
+          .join("&")}`
+      : "";
+
   console.log("Frontend opportunities:", items);
   console.log("IDs being sent to map:", items.map((item) => item.id));
   console.log("Map URL:", mapUrl);
+
   return (
     <section
       className="map-panel has-live-map"
       aria-label="Map showing opportunity locations"
     >
       <iframe
-       key = {mapUrl}
+        key={mapUrl}
         className="map__embed"
         src={mapUrl}
         title="Map of volunteer opportunities"
         loading="lazy"
       />
-      
 
       {selectedOpportunity && (
         <div className="map-card">
