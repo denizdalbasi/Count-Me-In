@@ -24,8 +24,8 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173",  # Local Vite/React development
-        "https://your-frontend-app.vercel.app"  # Your live Vercel URL
+        "http://localhost:5173",  # Local development
+        "https://count-me-in-inky.vercel.app"  # Your exact live Vercel frontend URL
     ],
     allow_credentials=True,
     allow_methods=["*"],
