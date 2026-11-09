@@ -4,7 +4,7 @@ import { api } from "./api";
 import { distanceInMiles, type Coordinates } from "./map";
 import { CATEGORIES, type Opportunity, type Profile } from "./opportunity";
 
-type Page = "browse" | "signin" | "signup" | "detail" | "profile" | "saved" | "add-opportunity";
+type Page="browse" | "signin" | "signup" | "detail" | "profile" | "saved" | "add-opportunity";
 type IconName =
   | "arrow"
   | "bookmark"
