@@ -16,8 +16,7 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-app = FastAPI()
-
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
@@ -25,14 +24,12 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "https://count-me-in-inky.vercel.app",
-        "https://count-me-in-inky.vercel.app/" # optional: handles trailing slash variant
+        "http://localhost:5173",  # Local Vite/React development
+        "https://your-frontend-app.vercel.app"  # Your live Vercel URL
     ],
     allow_credentials=True,
-    allow_methods=["*"],  # Allows all HTTP methods (GET, POST, etc.)
-    allow_headers=["*"],  # Allows all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 @app.get("/")
@@ -46,12 +43,12 @@ def read_root():
 
 @app.get("/opportunities")
 def get_opportunities(
-    title: Optional[str] = None, 
+    title: Optional[str] = None,
     categoryId: Optional[str] = None,
     minAge: Optional[int] = None,
     maxAge: Optional[int] = None,
     location: Optional[str] = None,
-    created_at: Optional[str] = None,  
+    created_at: Optional[str] = None,
     time_filter: Optional[str] = None
 ):
     try:
@@ -62,9 +59,9 @@ def get_opportunities(
         if categoryId:
             query = query.eq("category-id", categoryId)
         if minAge is not None:
-            query = query.lte("min-age", minAge)  
+            query = query.lte("min-age", minAge)
         if maxAge is not None:
-            query = query.gte("max-age", maxAge) 
+            query = query.gte("max-age", maxAge)
         if location:
             query = query.ilike("location-name", f"%{location}%")
 
@@ -80,8 +77,8 @@ def get_opportunities(
                 cutoff = None
 
             if cutoff is not None:
-                query = query.gte("created_at", cutoff.isoformat())    
-        
+                query = query.gte("created_at", cutoff.isoformat())
+
         response = query.execute()
         opportunities_data = response.data or []
 
@@ -112,14 +109,11 @@ def get_opportunities(
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
-
-    
 @app.post("/opportunities")
 def create_opportunity(payload: Dict[Any, Any] = Body(...)):
     try:
         payload.pop("id", None)
 
-        # Handle lookup if frontend passes orgName instead of organization-id
         org_name = payload.pop("orgName", None) or payload.pop("org-name", None)
         if org_name and not payload.get("organization-id"):
             profile_match = supabase.table("profiles").select("id").eq("name", org_name).execute()
@@ -128,7 +122,7 @@ def create_opportunity(payload: Dict[Any, Any] = Body(...)):
 
         response = supabase.table("opportunities").insert(payload).execute()
         return {
-            "message": "Opportunity created successfully!", 
+            "message": "Opportunity created successfully!",
             "data": response.data
         }
 
@@ -137,7 +131,7 @@ def create_opportunity(payload: Dict[Any, Any] = Body(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/profiles")
-def get_all_profiles(): 
+def get_all_profiles():
     try:
         response = supabase.table("profiles").select("*").execute()
         return response.data
@@ -149,7 +143,7 @@ def get_all_profiles():
 def sign_up_user(payload: Dict[Any, Any] = Body(...)):
     try:
         payload.pop("id", None)
-        
+
         email = payload.get("email")
         if not email:
             raise HTTPException(status_code=400, detail="Email is required")
@@ -174,8 +168,8 @@ def sign_up_user(payload: Dict[Any, Any] = Body(...)):
 def login_user(payload: Dict[Any, Any] = Body(...)):
     try:
         email = payload.get("email")
-        password = payload.get("password") 
-        
+        password = payload.get("password")
+
         if not email or not password:
             raise HTTPException(status_code=400, detail="Email and password are required")
 
@@ -206,26 +200,22 @@ def generate_opportunities_map(
 ):
     try:
         response = supabase.table("opportunities").select("*").execute()
-        opportunities = response.data
+        opportunities = response.data or []
 
-        
         if ids:
+            # Safely cast ID comparison to handle both int and string database types
             opportunities = [
                 opp for opp in opportunities
-                if opp["id"] in ids ]
-            
+                if opp.get("id") is not None and int(opp["id"]) in ids
+            ]
+
         print("IDs received from React:", ids)
-        print("Supabase opportunities:", [
-                {"id": opp["id"], "title": opp["title"]}
-                for opp in opportunities
-                ])
         if not opportunities:
             return "<h3>No active opportunities found to map.</h3>"
 
-
         first_opp = opportunities[0]
-        center_lat = first_opp.get("latitude") or 43.6532
-        center_lon = first_opp.get("longitude") or -79.3832
+        center_lat = first_opp.get("latitude") or 49.2827
+        center_lon = first_opp.get("longitude") or -123.1207
 
         m = folium.Map(location=[center_lat, center_lon], zoom_start=12)
 
@@ -244,7 +234,7 @@ def generate_opportunities_map(
                     <p style="margin: 0; font-size: 12px;">{description[:100]}...</p>
                 </div>
                 """
-                
+
                 folium.Marker(
                     location=[lat, lon],
                     popup=folium.Popup(popup_html, max_width=250),
