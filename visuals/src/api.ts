@@ -7,7 +7,7 @@ import {
 } from "./opportunity";
 
 // Point directly to your running FastAPI backend
-const API_BASE = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+const API_BASE = import.meta.env.VITE_API_URL || "admin684584165418645.pythonanywhere.com";
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
@@ -120,6 +120,7 @@ export const api = {
 
   getProfiles: () => request<Profile[]>("/profiles"),
 
+  // Accounts - matches FastAPI /signup and /login routes
   signup: (body: { role: string; name: string; email: string; phone: string; password: string }) =>
     request<{ message: string; user: Profile }>("/signup", { method: "POST", body: JSON.stringify(body) }),
     
